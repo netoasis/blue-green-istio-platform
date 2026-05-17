@@ -1,0 +1,18 @@
+{
+  "Items": [
+    {
+      "Id": "gb-rm|JFvj7pgB1H6m_iwEW68e",
+      "Type": "Container",
+      "Text": "12 Derby Street",
+      "Highlight": "0-2,3-8,9-15;0-2",
+      "Description": "Leek ST13 5AB - 2 Addresses"
+    },
+    {
+      "Id": "GB|RM|A|19739129|ENG",
+      "Type": "Address",
+      "Text": "12 Derby Street",
+      "Highlight": "0-2,3-8,9-15;0-2",
+      "Description": "Leyland PR25 4NU"
+    }
+  ]
+}

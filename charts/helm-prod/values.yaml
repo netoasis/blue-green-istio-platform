@@ -1,101 +1,50 @@
-# default values are for sandpit environment
 global:
-  deploy:
-    env: demo
-    dbhost: database
-    dbuser: sa
-    sa_password: ch@ng3m3!
-    initContainerUser: sandstone
-    initContainerPass: password
-    internal_gateway: to_be_replaced_by_actual_gateway_corresponding_to_the_environment
-    external_gateway: to_be_replaced_by_actual_gateway_corresponding_to_the_environment
-    useFakeDocumentService: true
-    useInternalGateway: false
-    useMockIdvService: false
-    useMockPsxService: false
-    useRDS: false
-    useDocumentDB: false
-    containerImage:
-      controlcentre: abank_controlcentre:0.1.5393
-      fakehost: abank_fakehost:0.1.5449
-      landing: abank_landing:0.1.5373
-      provisomockservice: abank_provisomockservice:2.35.0_81_202305301627
-      smsapi2email: oops_smsapi2email:smsapi2email-864
-      titlesearchfakehost: abank_titlesearchfakehost:0.1.5095
-      mailhog: oops_mailhog:mailhog-330
-      proxyserver: sst_haproxy:0.1.488
-      wiremockservice: abank_wiremockservice:0.1.5395
-      internetbankingui: abank_internetbankingui:0.1.3088
-      wso2isdbchangelog: sst_wso2isdbchangelog:0.1.5400
-      wso2is: sst_wso2is:0.1.489
-resources: {}
-nodeSelector: {}
-tolerations: []
-affinity: {}
-imagePullPolicy: IfNotPresent
+  namespace: prod
+  appName: fakehost
 
-front_end:
-  startupProbe:
-    enabled: true
-    # UIs have 60 seconds to startup
-    resourcePath: /index.html
-    failureThreshold: 12
-    timeoutSeconds: 5
-    periodSeconds: 5
-  livenessProbe:
-    enabled: true
-    resourcePath: /index.html
-    failureThreshold: 5
-    timeoutSeconds: 5
-    periodSeconds: 30
-  readinessProbe:
-    enabled: true
-    resourcePath: /index.html
-    failureThreshold: 5
-    timeoutSeconds: 5
-    periodSeconds: 30
-    successThreshold: 1
+blue:
+  image:
+    repository: docker-registry.sandstone.com.au/docker/abank_fakehost #blue-green-istio-platform
+    tag: 0.1.5418
 
-internetbanking:
-  replicas: 2
-  limits:
-    memory: '100Mi'
-  requests:
-    memory: '100Mi'
+green:
+  image:
+    repository: docker-registry.sandstone.com.au/docker/abank_fakehost
+    tag: 0.1.5449
 
-rdsproxy:
-  replicas: 0
-  rdshost: localhost
+service:
+  port: 80
+  targetPort: 8080
 
-documentdbproxy:
-  replicas: 0
+deployment:
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+    limits:
+      cpu: "250m"
+      memory: "256Mi"
 
-controlcentre:
-  replicas: 1
-  requests:
-    memory: "512Mi"
-  limits:
-    memory: "3572Mi"
+  blue:
+    replicas: 4
+  green:
+    replicas: 0
 
-smsapi:
-  replicas: 1
-  smtpHost: mailhog # use internal mailhog service
-  smtpPort: 1025
+virtualService:
+  host: "*"
+  gateway: istio-system/ingressgateway
+  timeout: 300s
+  weights:
+    blue: 100
+    green: 0
 
-mailhog:
-  replicas: 1
-  webPath: mailhog # Changing this will break access to Mailhog in a browser.
+hpa:
+  blue:
+    minReplicas: 4
+    maxReplicas: 10
+    cpuTarget: 75
 
-landing:
-  replicas: 1
-
-proxyserver:
-  replicas: 1
-  remoteHost: qas.dev.sandstone.online
-  remotePort: 443
-  #remoteHost: 10.30.1.73
-  #remotePort: 8081
-  limits:
-    memory: "256Mi"
-  requests:
-    memory: "180Mi"
+  green:
+    minReplicas: 1
+    maxReplicas: 15
+    cpuTarget: 60

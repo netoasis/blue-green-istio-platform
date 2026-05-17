@@ -1,0 +1,11 @@
+{
+	"Items": [
+		{
+			"Id": "GB|RM|A|4009774|ENG",
+			"Type": "Address",
+			"Text": "Department of Computer Science & Technology University of Cambridge William Gates Building 15 J J Thomson Avenue",
+			"Highlight": "0-10,11-13,14-22,23-30,55-57;",
+			"Description": "Cambridge CB3 0FD"
+		}
+	]
+}

@@ -1,0 +1,4 @@
+ApplicationNumber,TotalPayable,Premium,StampDuty,GST,TotalInsuredAmount,Status
+3981,,,,,,REJECTED
+4011,1684.98,1499.09,148.41,37.48,170000.00,QUOTED
+4015,1484.98,1299.09,108.41,29.48,150000.00,QUOTED

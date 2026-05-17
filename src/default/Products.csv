@@ -1,0 +1,27 @@
+Description,ProductType,ProductCode,InterestType
+Easy Invest Loan,STANDARD_MORTGAGE,HL006,Variable
+Easy Home Loan,STANDARD_MORTGAGE,HL001,Variable
+My Visa,CREDIT_CARD,CC001,Variable
+Freedom PL,UNSECURED_PERSONAL_LOAN,PL001,Variable
+SuperDuper PL,UNSECURED_PERSONAL_LOAN,PL005,Variable
+SB2882,STANDARD_MORTGAGE,SB2882,Fixed
+AF2882,STANDARD_MORTGAGE,AF2882,Fixed
+Super Overdraft,SECURED_OVERDRAFT,OD001,Variable
+Super Overdraft,SECURED_OVERDRAFT,SOD001,Variable
+Security Home Loan,STANDARD_MORTGAGE,HL004,Fixed
+New Car Personal Loan,UNSECURED_PERSONAL_LOAN,PL010-APPLY,Variable
+Gold PL,UNSECURED_PERSONAL_LOAN,PL003,Variable
+Advantage PL,SECURED_PERSONAL_LOAN,PL002,Variable
+Easy Home Loan,STANDARD_MORTGAGE,HL003,Variable
+Easy Invest Loan Fixed,STANDARD_MORTGAGE,HL008,Fixed
+Easy Invest Loan,STANDARD_MORTGAGE,HL007,Variable
+Easy Invest Loan Fixed,STANDARD_MORTGAGE,HL009,Fixed
+Easy Invest Loan,STANDARD_MORTGAGE,HL010,Variable
+Easy Invest Loan Fixed,STANDARD_MORTGAGE,HL011,Fixed
+Commercial Secured Term,COMMERCIAL_TERM_LOAN,CST001,Fixed
+Commercial Secured Term,COMMERCIAL_TERM_LOAN,CST002,Variable
+Commercial Unsecured Term,COMMERCIAL_TERM_LOAN,CUT001,Variable
+Commercial Secured LOC,SECURED_COMMERCIAL_LINE_OF_CREDIT,CLOC001,Variable
+Commercial Unsecured Overdraft,UNSECURED_COMMERCIAL_OVERDRAFT,COD001,Variable
+Bank Guarantee,BANK_GUARANTEE,BG01,Variable
+Business interest-free days credit card,BUSINESS_CREDIT_CARD,BCC01,Variable

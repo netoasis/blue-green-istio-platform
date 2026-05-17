@@ -1,0 +1,3 @@
+ApplicationNumber,TotalPayable,Premium,StampDuty,GST,CustInsurancePremium,TotalInsuredAmount,Status
+141,1684.98,1499.09,148.41,37.48,1520.2,170000,QUOTED
+97,1321.11,1211.11,98.5,11.5,1277.11,50000,ERROR

@@ -1,0 +1,18 @@
+{
+  "Items": [
+    {
+      "Id": "GB|RM|A|23667126|ENG",
+      "Type": "Address",
+      "Text": "Il Gusto 12 Derby Street",
+      "Highlight": "",
+      "Description": "Leek ST13 5AB"
+    },
+    {
+      "Id": "GB|RM|A|23667124|ENG",
+      "Type": "Address",
+      "Text": "Flat 1-2 12 Derby Street",
+      "Highlight": "",
+      "Description": "Leek ST13 5AB"
+    }
+  ]
+}

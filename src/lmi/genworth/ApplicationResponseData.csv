@@ -1,0 +1,4 @@
+ApplicationNumber,TotalInsuredAmount,TotalPayable,Premium,StampDuty,GST,FirstResponseStatus,FinalStatus
+3981,354291.63,1684.98,1499.09,3542,148.41,RECEIVED,APPROVED
+4011,,,,,,RECEIVED,REJECTED
+4015,,,,,,REJECTED,

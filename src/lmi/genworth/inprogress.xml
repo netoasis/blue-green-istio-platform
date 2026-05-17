@@ -1,0 +1,142 @@
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/">
+	<soapenv:Header>
+		<wsse:Security xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd" xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd" soapenv:mustUnderstand="1">
+			<wsu:Timestamp wsu:Id="TS-200">
+			    <wsu:Created>[AsyncCreated]</wsu:Created>
+			    <wsu:Expires>[AsyncExpires]</wsu:Expires>
+			</wsu:Timestamp>
+			<wsse:UsernameToken wsu:Id="UsernameToken-201">
+				<wsse:Username>Genworth_LMI</wsse:Username>
+				<wsse:Password Type="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordText">GM4LM1dev</wsse:Password>
+			</wsse:UsernameToken>
+		</wsse:Security>
+	</soapenv:Header>
+	<soapenv:Body>
+		<tns:receiveLMIResponse xmlns:tns="http://xyz.com.au/lmi/LMIResponse">
+			<PolicyResponseMessage>
+				<ns1:MessageBatch xmlns:ns1="http://schemas.genworth.com.au/lmi/response/v3" NumberOfMessages="1" ProductionData="Yes">
+					<ns1:Identifier Type="MIAssigned" UniqueID="52721"/>
+					<ns1:Identifier Type="LenderAssigned" UniqueID="1035"/>
+					<ns1:Date>2015-07-31</ns1:Date>
+					<ns1:Time>10:24:07.733+10:00</ns1:Time>
+					<ns1:Publisher>
+						<ns1:RelatedEntityRef RelatedID="1000"/>
+					</ns1:Publisher>
+					<ns1:Message>
+						<ns1:Identifier Type="MIAssigned" UniqueID="52721"/>
+						<ns1:MessageRelatesTo>
+							<ns1:Application>
+								<ns1:Identifier Type="LenderAssigned" UniqueID="[ApplicationId]"/>
+								<ns1:Submission>
+									<ns1:Date>2014-01-01</ns1:Date>
+								</ns1:Submission>
+								<ns1:PartySegment>
+									<ns1:Party Type="Applicant">
+										<ns1:Identifier Type="MIAssigned" UniqueID="B0001"/>
+										<ns1:Person>
+											<ns1:PersonName>
+												<ns1:FirstName>REBEKA</ns1:FirstName>
+												<ns1:OtherName>M</ns1:OtherName>
+												<ns1:Surname>LONGHURST</ns1:Surname>
+											</ns1:PersonName>
+										</ns1:Person>
+									</ns1:Party>
+								</ns1:PartySegment>
+								<ns1:LoanDetailSegment>
+									<ns1:LoanDetails>
+										<ns1:Identifier Type="MIAssigned" UniqueID="LN0001"/>
+										<ns1:LoanTerm Units="Months">360</ns1:LoanTerm>
+										<ns1:CurrentAmount>350000</ns1:CurrentAmount>
+										<ns1:LoanPurpose>
+											<ns1:LendingPurposeCode>PCH</ns1:LendingPurposeCode>
+										</ns1:LoanPurpose>
+									</ns1:LoanDetails>
+								</ns1:LoanDetailSegment>
+								<ns1:AddressSegment>
+									<ns1:AddressWrapper>
+										<ns1:Identifier Type="MIAssigned" UniqueID="S0001"/>
+										<ns1:Address>
+											<ns1:BuildingName/>
+											<ns1:UnitNo>65</ns1:UnitNo>
+											<ns1:StreetNo>32</ns1:StreetNo>
+											<ns1:Street Type="ST">MILES</ns1:Street>
+											<ns1:City>BALD HILLS</ns1:City>
+											<ns1:State Name="QLD"/>
+											<ns1:Postcode>4036</ns1:Postcode>
+											<ns1:Country>AUS</ns1:Country>
+										</ns1:Address>
+									</ns1:AddressWrapper>
+								</ns1:AddressSegment>
+								<ns1:MIApplicationSegment>
+									<ns1:MIApplication ApplicationDate="2014-01-01" CustCode="5470029" LendingProgram="SANDSTONE STANDARD PROGRAM" TransactionType="" UnderwritingType="STD">
+										<ns1:Identifier UniqueID="82072199"/>
+										<ns1:PolicyVersion>1</ns1:PolicyVersion>
+										<ns1:CustomerContact>
+											<ns1:ContactName>PETER PERFECT</ns1:ContactName>
+											<ns1:Phone/>
+											<ns1:Fax>61 0296874333</ns1:Fax>
+											<ns1:Email/>
+											<ns1:CustBranchName/>
+											<ns1:CustBranchBSB/>
+										</ns1:CustomerContact>
+									</ns1:MIApplication>
+								</ns1:MIApplicationSegment>
+							</ns1:Application>
+						</ns1:MessageRelatesTo>
+						<ns1:MessageBody Type="Information">
+							<ns1:Status Name="REFER_TO_UNDERWRITER">
+								<ns1:Date>2015-07-31</ns1:Date>
+								<ns1:Time>10:24:07.733+10:00</ns1:Time>
+							</ns1:Status>
+						</ns1:MessageBody>
+						<ns1:MICommunication>
+							<ns1:ResponseType>ST</ns1:ResponseType>
+							<ns1:ApplicationProcessedTime>2015-07-31T10:24:07</ns1:ApplicationProcessedTime>
+							<ns1:PolicyNumber>82072199</ns1:PolicyNumber>
+							<ns1:PolicyVersion>1</ns1:PolicyVersion>
+							<ns1:Decision>IN_PROGRESS</ns1:Decision>
+							<ns1:AdditionalLoanAmount>0</ns1:AdditionalLoanAmount>
+							<ns1:TotalInsuredAmount>0</ns1:TotalInsuredAmount>
+							<ns1:MICosts>
+								<ns1:MICostsType/>
+								<ns1:MICost>
+									<ns1:Premium>0</ns1:Premium>
+									<ns1:StampDuty>0</ns1:StampDuty>
+									<ns1:GST>0</ns1:GST>
+								</ns1:MICost>
+							</ns1:MICosts>
+							<ns1:LevelOfCover/>
+							<ns1:InsuredParty>SANDSTONE LTD</ns1:InsuredParty>
+							<ns1:MortgageManager/>
+							<ns1:PrimaryBorrowerName>LONGHURST REBEKA</ns1:PrimaryBorrowerName>
+							<ns1:BureauLetterRequired/>
+							<ns1:ValuationRequired/>
+							<ns1:InsurerDetails>
+								<ns1:LMIInsurer/>
+								<ns1:IssuingOffice>HEAD OFFICE</ns1:IssuingOffice>
+								<ns1:IssuingOfficeAddress>LEVEL 26 101 MILLER ST NORTH SYDNEY NSW 2060 AUS</ns1:IssuingOfficeAddress>
+								<ns1:IssuingOfficePhone>1300 655 422</ns1:IssuingOfficePhone>
+								<ns1:IssuingOfficeFax>1300 366 228</ns1:IssuingOfficeFax>
+								<ns1:UnderwriterName>VIRTUAL UNDERWRITER</ns1:UnderwriterName>
+								<ns1:UnderwriterContactPhone>1300 655 422</ns1:UnderwriterContactPhone>
+								<ns1:UnderwriterContactFax>1300 366 228</ns1:UnderwriterContactFax>
+							</ns1:InsurerDetails>
+							<ns1:MasterPolicyNo/>
+							<ns1:SignedFor/>
+							<ns1:Statement/>
+						</ns1:MICommunication>
+					</ns1:Message>
+					<ns1:RelatedPartySegment>
+						<ns1:RelatedParty RelPartyType="Insurer">
+							<ns1:Identifier UniqueID="1000"/>
+							<ns1:Company>
+								<ns1:CompanyName BusinessName="Genworth"/>
+								<ns1:CompanyNumber ABN="60 106 974 305"/>
+							</ns1:Company>
+						</ns1:RelatedParty>
+					</ns1:RelatedPartySegment>
+				</ns1:MessageBatch>
+			</PolicyResponseMessage>
+		</tns:receiveLMIResponse>
+	</soapenv:Body>
+</soapenv:Envelope>

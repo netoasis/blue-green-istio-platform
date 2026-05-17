@@ -1,0 +1,57 @@
+# -----------------------------
+# BLUE HPA
+# -----------------------------
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+
+metadata:
+  name: "{{ .Values.global.appName }}-blue-hpa"
+  namespace: "{{ .Values.global.namespace }}"
+
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: "{{ .Values.global.appName }}-blue"
+
+  minReplicas: {{ .Values.hpa.blue.minReplicas }}
+  maxReplicas: {{ .Values.hpa.blue.maxReplicas }}
+
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.hpa.blue.cpuTarget }}
+
+---
+
+# -----------------------------
+# GREEN HPA
+# -----------------------------
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+
+metadata:
+  name: "{{ .Values.global.appName }}-green-hpa"
+  namespace: "{{ .Values.global.namespace }}"
+
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: "{{ .Values.global.appName }}-green"
+
+  minReplicas: {{ .Values.hpa.green.minReplicas }}
+  maxReplicas: {{ .Values.hpa.green.maxReplicas }}
+
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.hpa.green.cpuTarget }}
