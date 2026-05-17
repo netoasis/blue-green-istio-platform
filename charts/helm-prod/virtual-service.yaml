@@ -1,0 +1,17 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: {{ .Values.global.appName }}-vs
+spec:
+  hosts:
+    - {{ .Values.virtualService.host }}
+  http:
+    - route:
+        - destination:
+            host: {{ .Values.global.appName }}.{{ .Values.global.namespace }}.svc.cluster.local
+            subset: blue
+          weight: {{ .Values.virtualService.weights.blue }}
+        - destination:
+            host: {{ .Values.global.appName }}.{{ .Values.global.namespace }}.svc.cluster.local
+            subset: green
+          weight: {{ .Values.virtualService.weights.green }}

@@ -1,0 +1,95 @@
+{{ if gt .Values.proxyserver.replicas 0.0}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: proxyserver
+  annotations:
+    meta.helm.sh/release-name: {{ .Release.Name }}
+    meta.helm.sh/release-namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: proxyserver
+  strategy:
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 50%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: proxyserver
+        alert_severity: critical
+    spec:
+      # We want no more than one pod per zone
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - proxyserver
+            topologyKey: topology.kubernetes.io/zone
+      containers:
+      - image: docker-registry.sandstone.com.au/docker/{{ .Values.global.deploy.containerImage.proxyserver }}
+        imagePullPolicy: {{ .Values.imagePullPolicy }}
+        name: proxyserver
+        resources:
+          limits:
+            memory: {{ .Values.proxyserver.limits.memory }}
+          requests:
+            memory: {{ .Values.proxyserver.requests.memory }}
+        env:
+        - name: HOST
+          value: {{ .Values.proxyserver.remoteHost | quote }}
+        - name: PORT
+          value: {{ .Values.proxyserver.remotePort | quote }}
+        startupProbe:
+          tcpSocket:
+            port: 80
+          # proxyserver has 60 seconds to startup
+          periodSeconds: 5
+          timeoutSeconds: 5
+          failureThreshold: 12
+        readinessProbe:
+          tcpSocket:
+            port: 80
+          periodSeconds: 10
+          timeoutSeconds: 10
+          failureThreshold: 10
+          successThreshold: 1
+        livenessProbe:
+          tcpSocket:
+            port: 80
+          periodSeconds: 10
+          timeoutSeconds: 10
+          failureThreshold: 10
+      restartPolicy: Always
+      imagePullSecrets:
+        - name: sst-docker-registry-key
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: proxyserver
+  annotations:
+    meta.helm.sh/release-name: {{ .Release.Name }}
+    meta.helm.sh/release-namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  ports:
+  - port: 8080
+    protocol: TCP
+    targetPort: 80
+  selector:
+    app: proxyserver
+  sessionAffinity: None  
+{{- end }}

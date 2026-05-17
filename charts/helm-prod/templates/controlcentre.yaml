@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: controlcentre
+  annotations:
+    meta.helm.sh/release-name: {{ .Release.Name }}
+    meta.helm.sh/release-namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  replicas: {{ .Values.controlcentre.replicas }}
+  selector:
+    matchLabels:
+      app: controlcentre
+  template:
+    metadata:
+      labels:
+        app: controlcentre
+    spec:
+      containers:
+      - name: controlcentre
+        image: docker-registry.sandstone.com.au/docker/{{ .Values.global.deploy.containerImage.controlcentre }}
+        imagePullPolicy: {{ .Values.imagePullPolicy }}
+        lifecycle:
+          postStart:
+            exec:
+              command: ["/bin/sh", "-c", "sleep 50 && /sst/importdrools.sh"]
+        resources:
+            limits:
+              memory: {{ .Values.controlcentre.limits.memory }}
+            requests:
+              memory: {{ .Values.controlcentre.requests.memory }}
+        startupProbe:
+          httpGet:
+            path: 'controlcentre/org.drools.guvnor.Guvnor/Guvnor.jsp'
+            port: 8080
+          # controlcentre has 60 seconds to start
+          periodSeconds: 5
+          timeoutSeconds: 5
+          failureThreshold: 12
+        readinessProbe:
+          httpGet:
+            path: 'controlcentre/org.drools.guvnor.Guvnor/Guvnor.jsp'
+            port: 8080
+          periodSeconds: 15
+          timeoutSeconds: 10
+          failureThreshold: 3
+          successThreshold: 1
+        livenessProbe:
+          httpGet:
+            path: 'controlcentre/org.drools.guvnor.Guvnor/Guvnor.jsp'
+            port: 8080
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+      restartPolicy: Always
+      imagePullSecrets:
+      - name: sst-docker-registry-key
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: controlcentre
+  annotations:
+    meta.helm.sh/release-name: {{ .Release.Name }}
+    meta.helm.sh/release-namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  ports:
+  - port: 8080
+  selector:
+    app: controlcentre

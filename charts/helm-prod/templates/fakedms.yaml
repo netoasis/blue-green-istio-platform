@@ -1,0 +1,65 @@
+{{- if .Values.global.deploy.useFakeDocumentService }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fakedms
+  annotations:
+    meta.helm.sh/release-name: {{ .Release.Name }}
+    meta.helm.sh/release-namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: fakedms
+  template:
+    metadata:
+      labels:
+        app: fakedms
+    spec:
+      containers:
+      - image: docker-registry.sandstone.com.au/docker/abank_fakedms:0.1.5361
+        name: fakedms
+        imagePullPolicy: {{ .Values.imagePullPolicy }}
+      restartPolicy: Always
+      imagePullSecrets:
+        - name: sst-docker-registry-key
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dms
+  annotations:
+    meta.helm.sh/release-name: {{ .Release.Name }}
+    meta.helm.sh/release-namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  ports:
+  - name: dms
+    port: 5502
+    targetPort: 7361
+  selector:
+    app: fakedms
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: docfast
+  annotations:
+    meta.helm.sh/release-name: {{ .Release.Name }}
+    meta.helm.sh/release-namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  ports:
+  - name: docfast
+    port: 8080
+    targetPort: 7361
+  selector:
+    app: fakedms
+{{- end -}}

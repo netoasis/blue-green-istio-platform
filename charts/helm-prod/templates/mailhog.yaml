@@ -1,0 +1,74 @@
+{{ if gt .Values.mailhog.replicas 0.0}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mailhog
+  annotations:
+    meta.helm.sh/release-name: {{ .Release.Name }}
+    meta.helm.sh/release-namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  replicas: {{ .Values.mailhog.replicas }}
+  selector:
+    matchLabels:
+      app: mailhog
+  template:
+    metadata:
+      labels:
+        app: mailhog
+    spec:
+      containers:
+      - image: docker-registry.sandstone.com.au/docker/{{ .Values.global.deploy.containerImage.mailhog }}
+        imagePullPolicy: {{ .Values.imagePullPolicy }}
+        name: mailhog
+        env:
+          - name: MH_UI_WEB_PATH
+            value: {{ .Values.mailhog.webPath }}
+        startupProbe:
+          httpGet:
+            path: /{{ .Values.mailhog.webPath }}
+            port: 8025
+          # mailhog has 60s to start
+          periodSeconds: 5
+          timeoutSeconds: 5
+          failureThreshold: 12
+        readinessProbe:
+          httpGet:
+            path: /{{ .Values.mailhog.webPath }}
+            port: 8025
+          periodSeconds: 10
+          timeoutSeconds: 10
+          failureThreshold: 3
+          successThreshold: 1
+        livenessProbe:
+          httpGet:
+            path: /{{ .Values.mailhog.webPath }}
+            port: 8025
+          periodSeconds: 10
+          timeoutSeconds: 10
+          failureThreshold: 3
+      imagePullSecrets:
+        - name: sst-docker-registry-key
+      restartPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mailhog
+  annotations:
+    meta.helm.sh/release-name: {{ .Release.Name }}
+    meta.helm.sh/release-namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  ports:
+  - name: http
+    port: 8025
+  - name: smtp
+    port: 1025
+  selector:
+    app: mailhog
+{{- end }}

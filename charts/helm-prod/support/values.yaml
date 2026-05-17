@@ -1,0 +1,27 @@
+global:
+  namespace: your-namespace
+  appName: your-app
+
+blue:
+  image:
+    repository: registry.digitalocean.com/your-registry/your-app
+    tag: current-blue-tag
+
+green:
+  image:
+    repository: registry.digitalocean.com/your-registry/your-app
+    tag: current-green-tag
+
+deployment:
+  blue:
+    replicas: 4
+  green:
+    replicas: 0
+
+virtualService:
+  host: "your-app.example.com"
+  gateway: istio-ingress/prod-gateway
+  timeout: 300s
+  weights:
+    blue: 100
+    green: 0

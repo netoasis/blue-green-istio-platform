@@ -1,0 +1,101 @@
+name: Blue Green Deployment
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.ARTIFACT_REGISTRY }}/${{ env.IMAGE_NAME }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Configure Docker Registry
+        run: doctl registry login
+
+      - name: Push to Registry
+        uses: docker/build-push-action@v6
+        with:
+          context: ./
+          push: true
+          tags: ${{ env.ARTIFACT_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+  deploy-green:
+    needs: build
+    name: Deploy Green
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update Green Image Tag and Replicas
+        run: |
+          find "$PR_DIR" -type f -name "values.yaml" -exec sed -i "/^green:$/,/^[^ ]/ s/^\( *tag: \).*/\1${{ github.sha }}/" {} \;
+          find "$PR_DIR" -type f -name "values.yaml" -exec sed -i "/^  green:$/ {n; s/^\( *replicas: \).*/\15/}" {} \;
+
+      - name: Wait for ArgoCD Sync
+        run: |
+          while [ $ELAPSED -lt $TIMEOUT ]; do
+            SYNC_STATUS=$(argocd app get $APP_NAME --output json | jq -r '.status.sync.status')
+            HEALTH_STATUS=$(argocd app get $APP_NAME --output json | jq -r '.status.health.status')
+            if [ "$SYNC_STATUS" = "Synced" ] && [ "$HEALTH_STATUS" = "Healthy" ]; then
+              break
+            fi
+            sleep $INTERVAL
+          done
+
+      - name: Shift Traffic to Green
+        run: |
+          sleep 30
+
+          stages=(
+            "75:25"
+            "50:50"
+            "25:75"
+            "0:100"
+          )
+
+          for stage in "${stages[@]}"; do
+            IFS=':' read -r blue_weight green_weight <<< "$stage"
+
+            helm upgrade --install ${{ env.HELM_RELEASE_NAME }} ${{ env.HELM_CHART_PATH }} \
+              --namespace ${{ env.NAMESPACE }} \
+              --set virtualService.weights.blue=${blue_weight} \
+              --set virtualService.weights.green=${green_weight}
+
+            if [ "$stage" != "${stages[0]}" ]; then
+              sleep 10
+            fi
+          done
+
+  deploy-blue:
+    needs: deploy-green
+    name: Deploy Blue
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update Blue Image Tag
+        run: |
+          find "$PR_DIR" -type f -name "values.yaml" -exec sed -i "/^blue:$/,/^[^ ]/ s/^\( *tag: \).*/\1${{ github.sha }}/" {} \;
+
+      - name: Shift Traffic to Blue and Stop Green
+        run: |
+          sleep 30
+
+          stages=("25:75" "50:50" "75:25" "100:0")
+
+          for stage in "${stages[@]}"; do
+            IFS=':' read -r blue_weight green_weight <<< "$stage"
+
+            helm upgrade --install ${{ env.HELM_RELEASE_NAME }} ${{ env.HELM_CHART_PATH }} \
+              --namespace ${{ env.NAMESPACE }} \
+              --set virtualService.weights.blue=${blue_weight} \
+              --set virtualService.weights.green=${green_weight}
+
+            if [ "$stage" != "${stages[0]}" ]; then
+              sleep 10
+            fi
+          done

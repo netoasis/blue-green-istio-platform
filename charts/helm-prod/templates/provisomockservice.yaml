@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: provisomockservice
+  annotations:
+    meta.helm.sh/release-name: {{ .Release.Name }}
+    meta.helm.sh/release-namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app: provisomockservice
+  template:
+    metadata:
+
+      labels:
+        app: provisomockservice
+    spec:
+      containers:
+      - name: provisomockservice
+        image: docker-registry.sandstone.com.au/docker/{{ .Values.global.deploy.containerImage.provisomockservice }}
+        imagePullPolicy: {{ .Values.imagePullPolicy }}
+        resources:
+          limits:
+            memory: "500Mi"
+          requests:
+            memory: "128Mi"
+        env:
+        - name: PROVISO_ANALYSIS_SERVICE_CALL_BACK_URL
+          value: http://provisoanalysisservice:9080/proviso-analysis-service/callbacks/updateResult
+        - name: MEMORY_REQUEST
+          value: '134217728' # 128Mi
+        - name: JAVA_OPTS
+          value: -Xms$(MEMORY_REQUEST) -Xmx$(MEMORY_REQUEST) -Duser.timezone="Australia/Sydney"
+      restartPolicy: Always
+      imagePullSecrets:
+        - name: sst-docker-registry-key
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: provisomockservice
+  annotations:
+    meta.helm.sh/release-name: {{ .Release.Name }}
+    meta.helm.sh/release-namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  ports:
+    - port: 9080
+  selector:
+    app: provisomockservice

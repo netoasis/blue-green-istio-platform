@@ -1,0 +1,104 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: internetbanking
+  annotations:
+    meta.helm.sh/release-name: {{ .Release.Name }}
+    meta.helm.sh/release-namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  replicas: {{ .Values.internetbanking.replicas }}
+  selector:
+    matchLabels:
+      app: internetbanking
+  strategy:
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: internetbanking
+        alert_severity: critical
+    spec:
+      {{- if .Values.global.deploy.usePodAffinity }}
+      # We want no more than one pod per zone
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - internetbanking
+            topologyKey: topology.kubernetes.io/zone
+      {{- end }}
+      containers:
+        - name: internetbanking
+          image: docker-registry.sandstone.com.au/docker/{{ .Values.global.deploy.containerImage.internetbankingui }}
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          {{- if .Values.global.deploy.gracefulShutdownEnabled }}
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh","-c","sleep 30;"]
+          {{- end }}
+          resources:
+            limits:
+              memory: {{ .Values.internetbanking.limits.memory | quote }}
+            requests:
+              memory: {{ .Values.internetbanking.requests.memory | quote }}
+          env:
+          - name: EXTERNAL_HOST_URL
+            value: https://{{ .Values.global.deploy.external_gateway }}
+          {{- if .Values.front_end.startupProbe.enabled }}
+          startupProbe:
+            httpGet:
+              path: {{ .Values.front_end.startupProbe.resourcePath | quote }}
+              port: 8080
+            periodSeconds: {{ .Values.front_end.startupProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.front_end.startupProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.front_end.startupProbe.failureThreshold }}
+          {{- end }}
+          {{- if .Values.front_end.readinessProbe.enabled }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.front_end.readinessProbe.resourcePath | quote }}
+              port: 8080
+            periodSeconds: {{ .Values.front_end.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.front_end.readinessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.front_end.readinessProbe.failureThreshold }}
+            successThreshold: {{ .Values.front_end.readinessProbe.successThreshold }}
+          {{- end }}
+          {{- if .Values.front_end.livenessProbe.enabled }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.front_end.livenessProbe.resourcePath | quote }}
+              port: 8080
+            periodSeconds: {{ .Values.front_end.livenessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.front_end.livenessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.front_end.livenessProbe.failureThreshold }}
+          {{- end }}
+      restartPolicy: Always
+      imagePullSecrets:
+        - name: sst-docker-registry-key
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: internetbanking
+  annotations:
+    meta.helm.sh/release-name: {{ .Release.Name }}
+    meta.helm.sh/release-namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  ports:
+  - port: 8080
+  selector:
+    app: internetbanking

@@ -1,0 +1,152 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wso2is
+  annotations:
+    meta.helm.sh/release-name: {{ .Release.Name }}
+    meta.helm.sh/release-namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: wso2is
+  template:
+    metadata:
+      labels:
+        app: wso2is
+    spec:
+      initContainers:
+        - name: init-db-changelog
+          image: docker-registry.sandstone.com.au/docker/{{ .Values.global.deploy.containerImage.wso2isdbchangelog }}
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          env:
+          - name: DB_HOST
+            value: {{ .Values.global.deploy.dbhost }}
+          - name: DATABASE_PORT
+            value: "1433"
+          - name: DB_USER
+            value: {{ .Values.global.deploy.dbuser }}
+          {{- if .Values.global.deploy.useRDS }}
+          - name: PSTORE_DB_PASS
+            value: {{ .Values.global.deploy.rds_password}}
+          - name: DB_SUFFIX
+            value: _{{ .Values.global.deploy.dbsuffix }}
+          {{ else }}
+          - name: DB_PASS
+            value: {{ .Values.global.deploy.sa_password }}
+          {{- end }}
+          - name: HOST_NAME
+            value: {{ .Values.global.deploy.external_gateway }}
+        - name: init-db-check
+          image: docker-registry.sandstone.com.au/docker/oops_sql:sql-855
+          command: ['pstore', 'exec', '--verbose', '--', '/bin/bash']
+          args:
+            - '-c'
+            - |
+              cat << EOF > script.sql
+  
+              if not exists (select * from DATABASECHANGELOGLOCK where LOCKED = 0) raiserror('Database not ready', 16, 1)
+  
+              EOF
+              for i in {1..60}; do
+                if sqlcmd -N -C -b -S $DB_HOST -U $DB_USER1 -P $DB_PASS1 -d $DB_NAME1 -i script.sql; then
+                  echo Script completed... WSO2IS can run
+                  exit 0
+                fi
+                echo trying again in 5s
+                sleep 5 # 60x means around 5 mins
+              done
+              echo Timed out... WSO2IS can't run
+              exit 1
+          env:
+          - name: DB_HOST
+            value: {{ .Values.global.deploy.dbhost }}
+          {{- if .Values.global.deploy.useRDS }}
+          - name: DB_NAME1
+            value: idm_{{ .Values.global.deploy.dbsuffix }}
+          - name: DB_USER1
+            value: {{ .Values.global.deploy.dbuser }}
+          - name: PSTORE_DB_PASS1
+            value: {{ .Values.global.deploy.rds_password}}
+          {{ else }}
+          - name: DB_NAME1
+            value: idm
+          - name: DB_USER1
+            value: {{ .Values.global.deploy.initContainerUser }}
+          - name: DB_PASS1
+            value: {{ .Values.global.deploy.initContainerPass }}
+          {{- end }}
+      containers:
+      - name: wso2is
+        image: docker-registry.sandstone.com.au/docker/{{ .Values.global.deploy.containerImage.wso2is }}
+        imagePullPolicy: {{ .Values.imagePullPolicy }}
+        ports:
+          - containerPort: 9763
+        resources:
+          limits:
+            memory: "2Gi"
+          requests:
+            memory: "1Gi"
+        startupProbe:
+          httpGet:
+            path: '/wso2-is/'
+            port: 9763
+          # wso2is has 3 minutes to startup
+          # it is very slow...
+          periodSeconds: 5
+          timeoutSeconds: 1
+          failureThreshold: 36
+        livenessProbe:
+          httpGet:
+            path: '/wso2-is/'
+            port: 9763
+          periodSeconds: 10
+          timeoutSeconds: 1
+          failureThreshold: 3
+        readinessProbe:
+          tcpSocket:
+            port: 9763
+          periodSeconds: 10
+          timeoutSeconds: 1
+          failureThreshold: 3
+        env:
+        - name: HOST_NAME
+          value: "{{ .Values.global.deploy.external_gateway }}"
+        - name: DB_HOST
+          value: "{{ .Values.global.deploy.dbhost }}"
+        {{- if .Values.global.deploy.useRDS }}
+        - name: DB_NAME
+          value: idm_{{ .Values.global.deploy.dbsuffix }}
+        - name: DB_USR
+          value: {{ .Values.global.deploy.dbuser}}
+        - name: PSTORE_DB_PWD
+          value: {{ .Values.global.deploy.rds_password}}
+        {{ else }}
+        - name: DB_USR
+          value: "{{ .Values.global.deploy.initContainerUser }}"
+        - name: DB_PWD
+          value: "{{ .Values.global.deploy.initContainerPass }}"
+        {{- end }}
+      restartPolicy: Always
+      imagePullSecrets:
+        - name: sst-docker-registry-key
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: wso2is
+  annotations:
+    meta.helm.sh/release-name: {{ .Release.Name }}
+    meta.helm.sh/release-namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  ports:
+    - port: 9763
+      name: wso2is-port
+  selector:
+    app: wso2is

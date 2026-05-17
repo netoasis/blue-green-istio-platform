@@ -1,0 +1,63 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: support-ingress-with-context
+  annotations:
+    nginx.ingress.kubernetes.io/app-root: /internet-banking
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+    nginx.ingress.kubernetes.io/affinity: cookie
+    nginx.ingress.kubernetes.io/session-cookie-max-age: "86400" # one day
+    nginx.ingress.kubernetes.io/upstream-vhost: $host
+    meta.helm.sh/release-name: {{ .Release.Name }}
+    meta.helm.sh/release-namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  rules:
+  - host: {{ .Values.global.deploy.internal_gateway }}
+    http:
+      paths:
+      - path: /config-manager-server
+        pathType: Prefix
+        backend:
+          service:
+            name: configmanagerserver
+            port:
+              number: 8080
+      - path: /controlcentre
+        pathType: Prefix
+        backend:
+          service:
+            name: controlcentre
+            port:
+              number: 8080
+      - path: /internet-banking
+        pathType: Prefix
+        backend:
+          service:
+            name: internetbanking
+            port:
+              number: 8080
+  - host: {{ .Values.global.deploy.external_gateway }}
+    http:
+      paths:
+        - path: /internet-banking
+          pathType: Prefix
+          backend:
+            service:
+              name: internetbanking
+              port:
+                number: 8080
+  {{- if .Values.global.deploy.useManagementGateway }}
+  - host: {{ .Values.global.deploy.management_gateway }}
+    http:
+      paths:
+        - path: /internet-banking
+          pathType: Prefix
+          backend:
+            service:
+              name: internetbanking
+              port:
+                number: 8080
+  {{- end }}
