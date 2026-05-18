@@ -2,7 +2,7 @@
 act -j build --secret-file .secrets
 
 act -j build --env-file .env --secret-file .secrets
-
+act -j deploy-green --secret-file .secrets
 
 
 Install Istio CLI on Windows
@@ -60,3 +60,15 @@ DOCKER_USERNAME=docker
 DOCKER_PASSWORD=your_password_here
 
 kubectl create secret docker-registry regcred --docker-server=docker-registry.sandstone.com.au --docker-username=docker --docker-password=immuc0nt@iner -n prod
+
+
+If ArgoCD exists for this app:
+
+Turn OFF:
+
+Auto Sync
+Self Heal
+Prune
+
+kubectl -n argocd get secret argocd-initial-admin-secret \
+-o jsonpath="{.data.password}" | base64 -d
