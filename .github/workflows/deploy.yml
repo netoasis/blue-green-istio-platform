@@ -38,14 +38,29 @@ jobs:
           cache-to: type=gha,mode=max
 
   deploy-green:
-    needs: build
+    #needs: build
     name: Deploy Green
     runs-on: ubuntu-latest
 
     steps:
-
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Install kubectl
+        run: |
+          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          
+          chmod +x kubectl
+          
+          mv kubectl /usr/local/bin/
+
+      - name: Install Helm
+        run: |
+          curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+      - name: Install jq
+        run: |
+          apt-get update && apt-get install -y jq    
 
       - name: Deploy Green Version
         run: |
@@ -57,10 +72,12 @@ jobs:
             --atomic \
             --wait \
             --timeout 5m \
-            --set green.image.tag=${{ github.sha }} \
+            --set deployment.blue.replicas=4 \
             --set deployment.green.replicas=4 \
             --set virtualService.weights.blue=100 \
             --set virtualService.weights.green=0
+
+   # --set green.image.tag=${{ github.sha }} \
 
       - name: Wait for Green Deployment
         run: |
@@ -96,14 +113,112 @@ jobs:
             echo "Green = ${green_weight}%"
             echo "======================================="
 
-            helm upgrade --install ${{ env.HELM_RELEASE_NAME }} ${{ env.HELM_CHART_PATH }} \
-              --namespace ${{ env.NAMESPACE }} \
-              --atomic \
-              --wait \
-              --timeout 5m \
-              --set virtualService.weights.blue=${blue_weight} \
-              --set virtualService.weights.green=${green_weight}
+            kubectl patch virtualservice fakehost-vs \
+            -n ${{ env.NAMESPACE }} \
+            --type='json' \
+            -p='[{"op":"replace","path":"/spec/http/0/route/0/weight","value":'"${blue_weight}"'},{"op":"replace","path":"/spec/http/0/route/1/weight","value":'"${green_weight}"'}]'
 
+            Kubectl delete pod tmp-check \
+            -n ${{ env.NAMESPACE }} \
+            --ignore-not-found=true >/dev/null 2>&1 || true
+  
+            until kubectl run tmp-check \
+              -n ${{ env.NAMESPACE }} \
+              --restart=Never \
+              --image=curlimages/curl \
+              --command -- \
+              curl -s http://fakehost.${{ env.NAMESPACE }}.svc.cluster.local:80 >/dev/null
+            do
+              echo "Backend not reachable yet..."
+
+              kubectl delete pod tmp-check \
+              -n ${{ env.NAMESPACE }} \
+              --ignore-not-found=true >/dev/null 2>&1 || true
+
+              sleep 2
+            done
+            
+            echo "Backend reachable."
+          
+            kubectl get virtualservice fakehost-vs -n ${{ env.NAMESPACE }} -o yaml
+           
+            TEST_POD="curl-test-${RANDOM}"
+          
+            kubectl run $TEST_POD \
+              -n ${{ env.NAMESPACE }} \
+              --restart=Never \
+              --image=curlimages/curl \
+              --command -- sh -c "
+                seq 1000 | xargs -P 50 -I {} \
+                curl -s --fail \
+                  --http1.1 \
+                  --no-keepalive \
+                  -H 'Connection: close' \
+                  -H 'Host: fakehost.internal' \
+                  http://istio-ingressgateway.istio-system.svc.cluster.local
+              "
+
+           echo "Waiting for $TEST_POD pod to finish..."
+  
+            while true; do
+              STATUS=$(kubectl get pod $TEST_POD -n ${{ env.NAMESPACE }} -o jsonpath="{.status.phase}" 2>/dev/null)
+            
+              echo "Current status: $STATUS"
+            
+              if [ "$STATUS" = "Succeeded" ]; then
+                break
+              fi
+            
+              if [ "$STATUS" = "Failed" ]; then
+                echo "$TEST_POD failed"
+                kubectl logs $TEST_POD -n ${{ env.NAMESPACE }}
+                exit 1
+              fi
+            
+              sleep 2
+            done
+            
+            echo "=== Sample Responses ==="
+  
+            kubectl logs $TEST_POD -n ${{ env.NAMESPACE }} | head -20
+  
+            echo "=== Traffic Distribution ==="
+            
+            BLUE_COUNT=$(kubectl logs $TEST_POD -n ${{ env.NAMESPACE }} | grep -c BLUE || true)
+            GREEN_COUNT=$(kubectl logs $TEST_POD -n ${{ env.NAMESPACE }} | grep -c GREEN || true)
+            
+            TOTAL=$((BLUE_COUNT + GREEN_COUNT))
+          
+            if [ "$TOTAL" -eq 0 ]; then
+              echo "No BLUE/GREEN responses captured"
+              kubectl logs $TEST_POD -n ${{ env.NAMESPACE }}
+              exit 1
+            fi
+  
+            BLUE_PERCENT=$((BLUE_COUNT * 100 / TOTAL))
+            GREEN_PERCENT=$((GREEN_COUNT * 100 / TOTAL))
+          
+            echo "BLUE responses : $BLUE_COUNT"
+            echo "GREEN responses: $GREEN_COUNT"
+            echo "Total responses: $TOTAL"
+            
+            echo "BLUE percent   : $BLUE_PERCENT%"
+            echo "GREEN percent  : $GREEN_PERCENT%"
+            
+            TOLERANCE=15
+            BLUE_DIFF=$((BLUE_PERCENT - blue_weight))
+            BLUE_DIFF=${BLUE_DIFF#-}
+            
+            GREEN_DIFF=$((GREEN_PERCENT - green_weight))
+            GREEN_DIFF=${GREEN_DIFF#-}
+            
+            if [ "$BLUE_DIFF" -gt "$TOLERANCE" ] || [ "$GREEN_DIFF" -gt "$TOLERANCE" ]; then
+              echo "Traffic distribution outside tolerance"
+              exit 1
+            fi
+              
+            kubectl delete pod $TEST_POD -n ${{ env.NAMESPACE }} --ignore-not-found=true
+          
             echo "Waiting for stabilization..."
             sleep 20
 
@@ -111,7 +226,7 @@ jobs:
               -n ${{ env.NAMESPACE }} \
               --timeout=120s
 
-            kubectl get pods -n ${{ env.NAMESPACE }}
+            kubectl get pods -n ${{ env.NAMESPACE }} -o wide
 
           done
 
@@ -124,7 +239,7 @@ jobs:
             --atomic \
             --wait \
             --timeout 5m \
-            --set deployment.blue.replicas=0 \
+            --set deployment.blue.replicas=2 \
             --set deployment.green.replicas=4 \
             --set virtualService.weights.blue=0 \
             --set virtualService.weights.green=100
@@ -143,18 +258,41 @@ jobs:
         if: failure()
         run: |
           echo "Deployment failed. Rolling back..."
+          
+          if helm history ${{ env.HELM_RELEASE_NAME }} -n ${{ env.NAMESPACE }} >/dev/null 2>&1; then
 
-          helm rollback ${{ env.HELM_RELEASE_NAME }} \
-            --namespace ${{ env.NAMESPACE }}
-
-          kubectl rollout status deployment/${{ env.APP_NAME }}-blue \
+            REVISION_COUNT=$(helm history ${{ env.HELM_RELEASE_NAME }} \
             -n ${{ env.NAMESPACE }} \
-            --timeout=300s
-
+            -o json | jq length)
+          
+            if [ "$REVISION_COUNT" -gt 1 ]; then
+            
+              PREVIOUS_REVISION=$(helm history ${{ env.HELM_RELEASE_NAME }} \
+              -n ${{ env.NAMESPACE }} \
+              -o json | jq '.[-2].revision')
+              
+              echo "Rolling back to revision $PREVIOUS_REVISION"
+              
+              helm rollback ${{ env.HELM_RELEASE_NAME }} \
+              $PREVIOUS_REVISION \
+              -n ${{ env.NAMESPACE }}
+          
+            else
+            
+              echo "No previous Helm revision exists. Skipping rollback."
+          
+            fi
+          
+          else
+        
+           echo "Release history not found. Skipping rollback."
+          
+          fi
+          
           kubectl get pods -n ${{ env.NAMESPACE }}
 
   deploy-blue:
-    needs: deploy-green
+    #needs: deploy-green
     name: Deploy Blue
     runs-on: ubuntu-latest
 
@@ -165,12 +303,40 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Update Blue Image Tag
+      - name: Install kubectl
+        run: |
+         curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+         
+         chmod +x kubectl
+         
+         mv kubectl /usr/local/bin/
+
+      - name: Install Helm
+        run: |
+         curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+      - name: Install jq
+        run: |
+         apt-get update && apt-get install -y jq
+
+      - name: Install yq
+        run: |
+          wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/local/bin/yq
+          chmod +x /usr/local/bin/yq    
+
+      - name: Sync Blue Tag From Green
         run: |
           set -e
 
-          find "$PR_DIR" -type f -name "values.yaml" \
-            -exec sed -i "/^blue:$/,/^[^ ]/ s/^\( *tag: \).*/\1${{ github.sha }}/" {} \;
+          VALUES_FILE="${{ env.HELM_CHART_PATH }}/values.yaml"
+
+          GREEN_TAG=$(yq '.green.image.tag' "$VALUES_FILE")
+
+          echo "Green tag: $GREEN_TAG"
+
+          yq -i ".blue.image.tag = \"$GREEN_TAG\"" "$VALUES_FILE"
+
+          cat "$VALUES_FILE"
 
       - name: Deploy Updated Blue
         run: |
@@ -179,7 +345,10 @@ jobs:
           helm upgrade --install ${{ env.HELM_RELEASE_NAME }} ${{ env.HELM_CHART_PATH }} \
             --namespace ${{ env.NAMESPACE }} \
             --atomic \
-            --wait
+            --wait \
+            --timeout 5m \
+            --set deployment.blue.replicas=4 \
+            --set deployment.green.replicas=4
 
           kubectl rollout status deployment/${{ env.APP_NAME }}-blue \
             -n ${{ env.NAMESPACE }} \
@@ -188,53 +357,178 @@ jobs:
       - name: Shift Traffic to Blue and Stop Green
         run: |
           set -e
-
+  
           stages=(
             "25:75"
             "50:50"
             "75:25"
             "100:0"
           )
-
+  
           for stage in "${stages[@]}"; do
-
+  
             IFS=':' read -r blue_weight green_weight <<< "$stage"
-
-            echo "Blue=${blue_weight} Green=${green_weight}"
-
-            helm upgrade --install ${{ env.HELM_RELEASE_NAME }} ${{ env.HELM_CHART_PATH }} \
-              --namespace ${{ env.NAMESPACE }} \
-              --set virtualService.weights.blue=${blue_weight} \
-              --set virtualService.weights.green=${green_weight}
-
-            sleep 20
-
-            kubectl rollout status deployment/${{ env.APP_NAME }}-blue \
+  
+            echo "======================================="
+            echo "Shifting Traffic"
+            echo "Blue  = ${blue_weight}%"
+            echo "Green = ${green_weight}%"
+            echo "======================================="
+  
+            kubectl patch virtualservice fakehost-vs \
               -n ${{ env.NAMESPACE }} \
-              --timeout=120s
+              --type='json' \
+              -p='[
+                {
+                  "op":"replace",
+                  "path":"/spec/http/0/route/0/weight",
+                  "value":'"${blue_weight}"'
+                },
+                {
+                  "op":"replace",
+                  "path":"/spec/http/0/route/1/weight",
+                  "value":'"${green_weight}"'
+                }
+              ]'
+  
+            echo "Waiting for backend availability..."
+          
+            kubectl delete pod tmp-check \
+            -n ${{ env.NAMESPACE }} \
+            --ignore-not-found=true
+          
+            until kubectl run tmp-check \
+              -n ${{ env.NAMESPACE }} \
+              --restart=Never \
+              --image=curlimages/curl \
+              --command -- \
+              curl -s --fail http://fakehost.${{ env.NAMESPACE }}.svc.cluster.local:80 >/dev/null
+            do
+              echo "Backend not reachable yet..."
+              sleep 2
+            done
+  
+            echo "Backend reachable."
+  
+            TEST_POD="curl-test-${RANDOM}"
+          
+            kubectl run $TEST_POD \
+              -n ${{ env.NAMESPACE }} \
+              --restart=Never \
+              --image=curlimages/curl \
+              --command -- sh -c "
+                seq 1000 | xargs -P 50 -I {} \
+                curl -s --fail \
+                  --http1.1 \
+                  --no-keepalive \
+                  -H 'Connection: close' \
+                  -H 'Host: fakehost.internal' \
+                  http://istio-ingressgateway.istio-system.svc.cluster.local
+              "
+  
+            echo "Waiting for $TEST_POD pod to finish..."
+            
+            while true; do
+  
+              STATUS=$(kubectl get pod $TEST_POD \
+                -n ${{ env.NAMESPACE }} \
+                -o jsonpath='{.status.phase}' 2>/dev/null)
+  
+              echo "Current status: $STATUS"
+  
+              if [ "$STATUS" = "Succeeded" ]; then
+                break
+              fi
+      
+              if [ "$STATUS" = "Failed" ]; then
+                echo "$TEST_POD failed"
+                kubectl logs $TEST_POD -n ${{ env.NAMESPACE }}
+                exit 1
+              fi
+  
+              sleep 2
+  
+            done
+            
+            LOGS=$(kubectl logs $TEST_POD -n ${{ env.NAMESPACE }} || true)
+          
+            echo "=== Sample Responses ==="
+  
+            echo "$LOGS" | head -20
+  
+            echo "=== Traffic Distribution ==="
+  
+            BLUE_COUNT=$(echo "$LOGS" | grep -c BLUE || true)
+            GREEN_COUNT=$(echo "$LOGS" | grep -c GREEN || true)
+  
+            TOTAL=$((BLUE_COUNT + GREEN_COUNT))
+  
+            if [ "$TOTAL" -eq 0 ]; then
+              echo "No BLUE/GREEN responses captured"
+  
+              echo "$LOGS"
+  
+              exit 1
+            fi
+  
+            BLUE_PERCENT=$((BLUE_COUNT * 100 / TOTAL))
+            GREEN_PERCENT=$((GREEN_COUNT * 100 / TOTAL))
+  
+            echo "BLUE responses : $BLUE_COUNT"
+            echo "GREEN responses: $GREEN_COUNT"
+            echo "Total responses: $TOTAL"
+  
+            echo "BLUE percent   : $BLUE_PERCENT%"
+            echo "GREEN percent  : $GREEN_PERCENT%"
+  
+            TOLERANCE=15
+  
+            BLUE_DIFF=$((BLUE_PERCENT - blue_weight))
+            BLUE_DIFF=${BLUE_DIFF#-}
+  
+            GREEN_DIFF=$((GREEN_PERCENT - green_weight))
+            GREEN_DIFF=${GREEN_DIFF#-}
+  
+            if [ "$BLUE_DIFF" -gt "$TOLERANCE" ] || \
+               [ "$GREEN_DIFF" -gt "$TOLERANCE" ]; then
+  
+              echo "Traffic distribution outside tolerance"
+  
+              exit 1
+            fi
+  
+            kubectl delete pod $TEST_POD \
+              -n ${{ env.NAMESPACE }} \
+              --ignore-not-found=true
 
+            kubectl wait --for=delete pod/$TEST_POD \
+            -n ${{ env.NAMESPACE }} \
+            --timeout=60s || true
+          
+            echo "Traffic shift successful."
+  
           done
 
       - name: Scale Down Green
         run: |
           set -e
-
+    
           helm upgrade --install ${{ env.HELM_RELEASE_NAME }} ${{ env.HELM_CHART_PATH }} \
             --namespace ${{ env.NAMESPACE }} \
+            --atomic \
+            --wait \
+            --timeout 5m \
             --set deployment.green.replicas=0 \
             --set virtualService.weights.blue=100 \
             --set virtualService.weights.green=0
 
-      - name: Commit updated values
+      - name: Final Validation
         run: |
-          set -e
+          kubectl get pods -n ${{ env.NAMESPACE }}
+          kubectl get svc -n ${{ env.NAMESPACE }}
+          kubectl get virtualservice -n ${{ env.NAMESPACE }}
 
-          git config --global user.email "sam.shan@yahoo.com"
-          git config --global user.name "netoasis"
+          kubectl rollout status deployment/${{ env.APP_NAME }}-blue \
+            -n ${{ env.NAMESPACE }} \
+            --timeout=300s
 
-          git add .
-
-          git diff --cached --quiet || \
-          git commit -m "Update blue image to ${{ github.sha }}"
-
-          git push origin HEAD:${GITHUB_REF_NAME}

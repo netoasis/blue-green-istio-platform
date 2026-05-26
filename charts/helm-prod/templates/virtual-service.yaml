@@ -1,4 +1,4 @@
-apiVersion: networking.istio.io/v1alpha3
+apiVersion: networking.istio.io/v1
 kind: VirtualService
 
 metadata:
@@ -21,7 +21,7 @@ spec:
 
       corsPolicy:
         allowOrigin:
-          - "*"
+          - "https://app.company.com"
 
         allowMethods:
           - GET
@@ -32,7 +32,8 @@ spec:
           - OPTIONS
 
         allowHeaders:
-          - "*"
+          - Authorization
+          - Content-Type
 
         allowCredentials: true
 

@@ -72,3 +72,34 @@ Prune
 
 kubectl -n argocd get secret argocd-initial-admin-secret \
 -o jsonpath="{.data.password}" | base64 -d
+
+run in command line:
+
+act -j deploy-green ^
+--secret-file .secrets ^
+-v %USERPROFILE%\.kube/config:/root/.kube/config ^
+--env KUBECONFIG=/root/.kube/config ^
+--container-options "--network host"
+
+
+docker run --rm -it ^
+-v C:\temp\kubeconfig.yaml:/root/.kube/config ^
+-e KUBECONFIG=/root/.kube/config ^
+bitnami/kubectl config view
+
+
+act -j deploy-green ^
+--secret-file .secrets ^
+--env-file .env ^
+--container-options "--add-host=host.docker.internal:host-gateway -v C:/temp/kubeconfig.yaml:/root/.kube/config" ^
+--env KUBECONFIG=/root/.kube/config
+
+
+act -j deploy-blue ^
+--secret-file .secrets ^
+--env-file .env ^
+--container-options "--add-host=host.docker.internal:host-gateway -v C:/temp/kubeconfig.yaml:/root/.kube/config" ^
+--env KUBECONFIG=/root/.kube/config
+
+
+helm delete migration-svc -n prod

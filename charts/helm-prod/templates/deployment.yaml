@@ -23,7 +23,14 @@ spec:
       containers:
         - name: "{{ .Values.global.appName }}"
           image: "{{ .Values.blue.image.repository }}:{{ .Values.blue.image.tag }}"
+          args:
+            - "-text=BLUE"
+            - "-listen=0.0.0.0:5678"
           imagePullPolicy: Always
+          ports:
+          - containerPort: 5678
+            name: http
+            protocol: TCP
           resources:
             requests:
               cpu: {{ .Values.deployment.resources.requests.cpu }}
@@ -33,21 +40,21 @@ spec:
               memory: {{ .Values.deployment.resources.limits.memory }}
           startupProbe:
             tcpSocket:
-              port: 7361
+              port: 5678
             # fakehost has 60 seconds to start
             periodSeconds: 5
             timeoutSeconds: 5
             failureThreshold: 12
           readinessProbe:
             tcpSocket:
-              port: 7361
+              port: 5678
             periodSeconds: 10
             timeoutSeconds: 10
             failureThreshold: 10
             successThreshold: 1
           livenessProbe:
             tcpSocket:
-              port: 7361
+              port: 5678
             periodSeconds: 10
             timeoutSeconds: 10
             failureThreshold: 10
@@ -80,7 +87,14 @@ spec:
       containers:
         - name: "{{ .Values.global.appName }}"
           image: "{{ .Values.green.image.repository }}:{{ .Values.green.image.tag }}"
+          args:
+            - "-text=GREEN"
+            - "-listen=0.0.0.0:5678"
           imagePullPolicy: Always
+          ports:
+            - containerPort: 5678
+              name: http
+              protocol: TCP
           resources:
             requests:
               cpu: {{ .Values.deployment.resources.requests.cpu }}
@@ -90,21 +104,21 @@ spec:
               memory: {{ .Values.deployment.resources.limits.memory }}
           startupProbe:
             tcpSocket:
-              port: 7361
+              port: 5678
             # fakehost has 60 seconds to start
             periodSeconds: 5
             timeoutSeconds: 5
             failureThreshold: 12
           readinessProbe:
             tcpSocket:
-              port: 7361
+              port: 5678
             periodSeconds: 10
             timeoutSeconds: 10
             failureThreshold: 10
             successThreshold: 1
           livenessProbe:
             tcpSocket:
-              port: 7361
+              port: 5678
             periodSeconds: 10
             timeoutSeconds: 10
             failureThreshold: 10

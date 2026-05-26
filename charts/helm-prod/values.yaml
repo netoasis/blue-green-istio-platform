@@ -4,13 +4,13 @@ global:
 
 blue:
   image:
-    repository: docker-registry.sandstone.com.au/docker/abank_fakehost #blue-green-istio-platform
-    tag: 0.1.5418
+    repository: hashicorp/http-echo #docker-registry.sandstone.com.au/docker/abank_fakehost #blue-green-istio-platform
+    tag: 0.2.3 #0.1.5418
 
 green:
   image:
-    repository: docker-registry.sandstone.com.au/docker/abank_fakehost
-    tag: 0.1.5449
+    repository: hashicorp/http-echo #docker-registry.sandstone.com.au/docker/abank_fakehost
+    tag: 1.0.0 #0.1.5449
 
 service:
   port: 80
@@ -28,12 +28,12 @@ deployment:
   blue:
     replicas: 4
   green:
-    replicas: 0
+    replicas: 1
 
 virtualService:
-  host: "*"
+  host: "fakehost.internal"
   gateway: istio-system/ingressgateway
-  timeout: 300s
+  timeout: 15s
   weights:
     blue: 100
     green: 0
