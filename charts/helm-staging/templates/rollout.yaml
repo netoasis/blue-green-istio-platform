@@ -2,8 +2,8 @@ apiVersion: argoproj.io/v1alpha1
 kind: Rollout
 
 metadata:
-  name: {{ .Values.global.appName }}
-  namespace: {{ .Values.global.namespace }}
+  name: "{{ .Values.global.appName }}"
+  namespace: "{{ .Values.global.namespace }}"
 
 spec:
   replicas: 4
@@ -12,35 +12,62 @@ spec:
 
   selector:
     matchLabels:
-      app: {{ .Values.global.appName }}
+      app: "{{ .Values.global.appName }}"
 
   template:
     metadata:
       labels:
-        app: {{ .Values.global.appName }}
+        app: "{{ .Values.global.appName }}"
 
     spec:
-      containers:
-        - name: {{ .Values.global.appName }}
+      imagePullSecrets:
+        - name: regcred
 
-          image: "{{ .Values.green.image.repository }}:{{ .Values.green.image.tag }}"
+      containers:
+        - name: "{{ .Values.global.appName }}"
+
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
 
           imagePullPolicy: Always
 
-          ports:
-            - containerPort: 8080
-
           args:
-            - "-text=GREEN"
+            - "-text={{ .Values.image.tag }}"
+            - "-listen=0.0.0.0:5678"
+
+          ports:
+            - containerPort: 5678
+              name: http
+              protocol: TCP
 
           resources:
             requests:
-              cpu: "100m"
-              memory: "128Mi"
+              cpu: {{ .Values.deployment.resources.requests.cpu }}
+              memory: {{ .Values.deployment.resources.requests.memory }}
 
             limits:
-              cpu: "250m"
-              memory: "256Mi"
+              cpu: {{ .Values.deployment.resources.limits.cpu }}
+              memory: {{ .Values.deployment.resources.limits.memory }}
+
+          startupProbe:
+            tcpSocket:
+              port: 5678
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 12
+
+          readinessProbe:
+            tcpSocket:
+              port: 5678
+            periodSeconds: 10
+            timeoutSeconds: 10
+            failureThreshold: 10
+
+          livenessProbe:
+            tcpSocket:
+              port: 5678
+            periodSeconds: 10
+            timeoutSeconds: 10
+            failureThreshold: 10
 
   strategy:
 
@@ -50,7 +77,6 @@ spec:
       canaryService: fakehost-canary
 
       trafficRouting:
-
         istio:
           virtualService:
             name: fakehost-vs
@@ -58,7 +84,6 @@ spec:
               - primary
 
       steps:
-
         - setWeight: 25
         - pause:
             duration: 20s
