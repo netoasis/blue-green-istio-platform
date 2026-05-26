@@ -1,0 +1,6 @@
+apiVersion: v2
+name: blue-green-istio-platform
+description: Blue/Green deployment platform using Kubernetes, Helm and Istio
+type: application
+version: 1.0.0
+appVersion: "1.0.0"

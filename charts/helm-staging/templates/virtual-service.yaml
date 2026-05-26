@@ -1,0 +1,53 @@
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+
+metadata:
+  name: "{{ .Values.global.appName }}-vs"
+  namespace: "{{ .Values.global.namespace }}"
+
+spec:
+  hosts:
+    - "{{ .Values.virtualService.host }}"
+
+  gateways:
+    - "{{ .Values.virtualService.gateway }}"
+
+  http:
+    - timeout: "{{ .Values.virtualService.timeout }}"
+
+      retries:
+        attempts: 3
+        perTryTimeout: 10s
+
+      corsPolicy:
+        allowOrigin:
+          - "https://app.company.com"
+
+        allowMethods:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+          - PATCH
+          - OPTIONS
+
+        allowHeaders:
+          - Authorization
+          - Content-Type
+
+        allowCredentials: true
+
+      route:
+        - destination:
+            host: "{{ .Values.global.appName }}.{{ .Values.global.namespace }}.svc.cluster.local"
+            subset: blue
+            port:
+              number: 80
+          weight: {{ .Values.virtualService.weights.blue }}
+
+        - destination:
+            host: "{{ .Values.global.appName }}.{{ .Values.global.namespace }}.svc.cluster.local"
+            subset: green
+            port:
+              number: 80
+          weight: {{ .Values.virtualService.weights.green }}

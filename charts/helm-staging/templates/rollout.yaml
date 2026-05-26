@@ -1,0 +1,76 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+
+metadata:
+  name: {{ .Values.global.appName }}
+  namespace: {{ .Values.global.namespace }}
+
+spec:
+  replicas: 4
+
+  revisionHistoryLimit: 3
+
+  selector:
+    matchLabels:
+      app: {{ .Values.global.appName }}
+
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.global.appName }}
+
+    spec:
+      containers:
+        - name: {{ .Values.global.appName }}
+
+          image: "{{ .Values.green.image.repository }}:{{ .Values.green.image.tag }}"
+
+          imagePullPolicy: Always
+
+          ports:
+            - containerPort: 8080
+
+          args:
+            - "-text=GREEN"
+
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+
+            limits:
+              cpu: "250m"
+              memory: "256Mi"
+
+  strategy:
+
+    canary:
+
+      stableService: fakehost-stable
+      canaryService: fakehost-canary
+
+      trafficRouting:
+
+        istio:
+          virtualService:
+            name: fakehost-vs
+            routes:
+              - primary
+
+      steps:
+
+        - setWeight: 25
+        - pause:
+            duration: 20s
+
+        - setWeight: 50
+        - pause:
+            duration: 20s
+
+        - setWeight: 75
+        - pause:
+            duration: 20s
+
+        - setWeight: 100
+        - pause:
+            duration: 10s
