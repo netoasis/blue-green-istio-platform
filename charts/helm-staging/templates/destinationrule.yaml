@@ -1,10 +1,12 @@
-apiVersion: networking.istio.io/v1alpha3
+apiVersion: networking.istio.io/v1beta1
 kind: DestinationRule
+
 metadata:
   name: "{{ .Values.global.appName }}-dr"
   namespace: "{{ .Values.global.namespace }}"
+
 spec:
-  host: "{{ .Values.global.appName }}.{{ .Values.global.namespace }}.svc.cluster.local"
+  host: "{{ .Values.global.appName }}-stable"
 
   trafficPolicy:
     loadBalancer:
@@ -23,12 +25,3 @@ spec:
       interval: 10s
       baseEjectionTime: 30s
       maxEjectionPercent: 50
-
-  subsets:
-    - name: blue
-      labels:
-        version: blue
-
-    - name: green
-      labels:
-        version: green
