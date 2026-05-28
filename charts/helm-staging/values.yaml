@@ -25,7 +25,7 @@ deployment:
     replicas: 1
 
 virtualService:
-  host: "fakehost.internal"
+  host: "fakehost.staging.internal"
   gateway: istio-system/ingressgateway
   timeout: 15s
   weights:
