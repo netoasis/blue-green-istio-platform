@@ -18,10 +18,8 @@ spec:
       route:
         - destination:
             host: "{{ .Values.global.appName }}-stable"
-            subset: Stable
           weight: 100
 
         - destination:
             host: "{{ .Values.global.appName }}-canary"
-            subset: Canary
           weight: 0
