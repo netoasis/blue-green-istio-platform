@@ -103,3 +103,35 @@ act -j deploy-blue ^
 
 
 helm delete migration-svc -n prod
+
+Argo Rollouts Dashboard
+kubectl port-forward svc/argo-rollouts-dashboard -n argo-rollouts 3100:3100
+http://localhost:3100
+
+Argo CD
+kubectl port-forward svc/argocd-server -n argocd 8080:443
+https://localhost:8080
+
+Kiali
+kubectl port-forward svc/kiali -n istio-system 20001:20001
+http://localhost:20001
+
+Grafana
+kubectl port-forward svc/grafana -n monitoring 3000:80
+http://localhost:3000
+
+Prometheus
+kubectl port-forward svc/prometheus -n istio-system 9090:9090
+http://localhost:9090
+
+Run in background (PowerShell)
+
+Start-Process powershell -ArgumentList "kubectl port-forward svc/argo-rollouts-dashboard -n argo-rollouts 3100:3100"
+
+Start-Process powershell -ArgumentList "kubectl port-forward svc/argocd-server -n argocd 8080:443"
+
+Start-Process powershell -ArgumentList "kubectl port-forward svc/kiali -n istio-system 20001:20001"
+
+Start-Process powershell -ArgumentList "kubectl port-forward svc/grafana -n istio-system 3000:80"
+
+Start-Process powershell -ArgumentList "kubectl port-forward svc/prometheus -n istio-system 9090:9090"
