@@ -78,4 +78,4 @@ spec:
 
       scaleDownDelaySeconds: 60
 
-      previewReplicaCount: 1
+      prePromotionAnalysis: {}
