@@ -76,6 +76,6 @@ spec:
 
       autoPromotionEnabled: false
 
-      scaleDownDelaySeconds: 60
+      scaleDownDelaySeconds: 30
 
       prePromotionAnalysis: {}
