@@ -12,8 +12,5 @@ spec:
 
   rules:
     - backendRefs:
-        - name: {{ .Values.global.appName }}-stable
-          port: 80
-
-        - name: {{ .Values.global.appName }}-canary
+        - name: {{ .Values.global.appName }}-active
           port: 80

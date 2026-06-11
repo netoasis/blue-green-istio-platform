@@ -70,18 +70,12 @@ spec:
             failureThreshold: 10
 
   strategy:
-    canary:
-      stableService: fakehost-stable
-      canaryService: fakehost-canary
+    blueGreen:
+      activeService: fakehost-active
+      previewService: fakehost-preview
 
-      trafficRouting:
-        plugins:
-          argoproj-labs/gatewayAPI:
-            httpRoute: fakehost-route
+      autoPromotionEnabled: false
 
-      steps:
-        - setWeight: 60
-        - pause: { }
+      scaleDownDelaySeconds: 60
 
-        - setWeight: 100
-        - pause: {}
+      previewReplicaCount: 1
