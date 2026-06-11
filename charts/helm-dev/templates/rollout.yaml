@@ -1,0 +1,87 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+
+metadata:
+  name: "{{ .Values.global.appName }}"
+  namespace: "{{ .Values.global.namespace }}"
+
+spec:
+  replicas: 4
+
+  revisionHistoryLimit: 3
+
+  selector:
+    matchLabels:
+      app: "{{ .Values.global.appName }}"
+
+  template:
+    metadata:
+      labels:
+        app: "{{ .Values.global.appName }}"
+
+    spec:
+      imagePullSecrets:
+        - name: regcred
+
+      containers:
+        - name: "{{ .Values.global.appName }}"
+
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+
+          imagePullPolicy: Always
+
+          args:
+            - "-text={{ .Values.image.tag }}"
+            - "-listen=0.0.0.0:5678"
+
+          ports:
+            - containerPort: 5678
+              name: http
+              protocol: TCP
+
+          resources:
+            requests:
+              cpu: {{ .Values.deployment.resources.requests.cpu }}
+              memory: {{ .Values.deployment.resources.requests.memory }}
+
+            limits:
+              cpu: {{ .Values.deployment.resources.limits.cpu }}
+              memory: {{ .Values.deployment.resources.limits.memory }}
+
+          startupProbe:
+            tcpSocket:
+              port: 5678
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 12
+
+          readinessProbe:
+            tcpSocket:
+              port: 5678
+            periodSeconds: 10
+            timeoutSeconds: 10
+            failureThreshold: 10
+
+          livenessProbe:
+            tcpSocket:
+              port: 5678
+            periodSeconds: 10
+            timeoutSeconds: 10
+            failureThreshold: 10
+
+  strategy:
+    canary:
+      stableService: fakehost-stable
+      canaryService: fakehost-canary
+
+      trafficRouting:
+        plugins:
+          argoproj-labs/gatewayAPI:
+            httpRoute: fakehost-route
+
+      steps:
+        - setWeight: 60
+        - pause: { }
+
+        - setWeight: 100
+        - pause: {}

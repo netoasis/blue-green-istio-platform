@@ -1,4 +1,4 @@
-Start-Process powershell -ArgumentList "kubectl port-forward svc/argo-rollouts-dashboard -n argo-rollouts 3100:8080"
+#Start-Process powershell -ArgumentList "kubectl port-forward svc/argo-rollouts-dashboard -n argo-rollouts 3100:8080"
 Start-Process powershell -ArgumentList "kubectl port-forward svc/argocd-server -n argocd 8080:443"
 Start-Process powershell -ArgumentList "kubectl port-forward svc/kiali -n istio-system 20001:20001"
 Start-Process powershell -ArgumentList "kubectl port-forward svc/grafana -n monitoring 3000:80"
