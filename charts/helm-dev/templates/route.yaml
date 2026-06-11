@@ -14,8 +14,6 @@ spec:
     - backendRefs:
         - name: {{ .Values.global.appName }}-stable
           port: 80
-          weight: 100
 
         - name: {{ .Values.global.appName }}-canary
           port: 80
-          weight: 0
